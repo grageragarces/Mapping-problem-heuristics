@@ -1,0 +1,34 @@
+local search might be worth trying empirically 
+
+> -- try to find a (any) node, q, of the quantum circuit
+>     graph which is currently mapped to a node, x,
+>     of the network topology graph,
+>     such that there is neighbor node, y, of the node x
+>     in the network topology
+>     graph such that if you map q to y intead of x, and
+>     keep the rest of the mapping the same, then the total
+>     cost of the mapping strictly decreases
+>     (where the cost is measured as the sum of the distances, in
+>      the network topology graph, of
+>      the two nodes to which the map sends each edge of the
+>      quantum circuit graph).
+>
+> -- If no such "improvable" node q exists, and hence
+>     the local improvement iterations have stopped,
+>     then output the current mapping as a "local optimum".
+
+
+ no guarantee that this local optimum will be anywhere
+> close to the global opitimum, but it is worth trying this general "local
+> search" strategy as a heuristic, to see if it results in reasonable
+> mappings on typical cases
+
+
+if you are actually going to implement it, then I would suggest that in
+the first phase you could try doing something a little bit more clever
+than just mapping all nodes of the quantum circuit graph uninformly at
+random to the nodes of the network topology.
+
+Instead, you could, for example, map all the nodes associated with
+a single q-bit (i.e., one horizontal line) to the same node of
+the network topology (a node which could be randomly chosen), etc.
