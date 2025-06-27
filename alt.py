@@ -1,4 +1,4 @@
-import hdh 
+import hdh
 from hdh.converters.convert_from_qasm import from_qasm
 import networkx as nx
 import numpy as np
@@ -56,7 +56,7 @@ def create_circuit_representation_from_qasm(qasm_file_path):
             last_op_on_qubit[qid] = op_hdh_node_id
             initial_qubit_groups[qid].append(op_hdh_node_id)
 
-    return circuit_hdh, initial_qubit_groups, circuit_dependencies_for_cost 
+    return circuit_hdh, initial_qubit_groups, circuit_dependencies_for_cost
 
 
 # --- 2. Network Graph Creation ---
@@ -82,7 +82,7 @@ def create_linear_network_graph(num_devices, capacities):
     for i in range(num_devices):
         node_id = f"chip_{i}"
         network_graph.add_node(node_id, capacity=capacities[i], current_load=0)
-        network_graph.add_edge(node_id, node_id) 
+        network_graph.add_edge(node_id, node_id)
 
     for i in range(num_devices - 1):
         network_graph.add_edge(f"chip_{i}", f"chip_{i+1}")
@@ -156,14 +156,14 @@ def calculate_total_cost(mapping: dict[str, str], circuit_dependencies_for_cost:
         try:
             cost_for_dependency = shortest_paths_matrix[mapped_u][mapped_v]
         except KeyError:
-            cost_for_dependency = float('inf') 
+            cost_for_dependency = float('inf')
 
         total_cost += cost_for_dependency
     return total_cost
 
 def run_local_search(circuit_hdh_obj: hdh, network_graph: nx.Graph, initial_mapping: dict[str, str], network_node_loads: dict[str, int], shortest_paths_matrix: dict[str, dict[str, int]], circuit_dependencies_for_cost: list[tuple[str, str]], max_iterations: int = 10000, patience: int = 5):
     current_mapping = initial_mapping.copy()
-    current_network_loads = network_node_loads.copy() 
+    current_network_loads = network_node_loads.copy()
     current_cost = calculate_total_cost(current_mapping, circuit_dependencies_for_cost, shortest_paths_matrix)
 
     #print(f"\nStarting Local Search. Initial cost: {current_cost}")
@@ -185,10 +185,12 @@ def run_local_search(circuit_hdh_obj: hdh, network_graph: nx.Graph, initial_mapp
                 continue
 
             current_chip = current_mapping[state_id]
-            neighbors = list(network_graph.neighbors(current_chip))
-            np.random.shuffle(neighbors)
+            # MODIFICATION START: Iterate through all network chips instead of just neighbors
+            all_network_chips = list(network_graph.nodes())
+            np.random.shuffle(all_network_chips)
 
-            for target_chip in neighbors:
+            for target_chip in all_network_chips:
+            # MODIFICATION END
                 if target_chip == current_chip:
                     continue
 
@@ -224,7 +226,7 @@ def run_local_search(circuit_hdh_obj: hdh, network_graph: nx.Graph, initial_mapp
     # print("Final Network Node Loads:")
     # for n_node, load in current_network_loads.items():
     #     print(f"  {n_node}: {load}/{network_graph.nodes[n_node]['capacity']}")
-    
+
     return current_mapping, current_cost, current_network_loads
 
 # --- 6. Partitioning with METIS (opposition) ---
@@ -260,23 +262,23 @@ def partition_hdh_with_metis(circuit_hdh_obj, num_devices, circuit_dependencies,
     # Step 5: Compute cost
     cost = calculate_total_cost(metis_mapping, circuit_dependencies, shortest_paths_matrix)
     return cost
-    
+
 # --- Main Execution ---
 if __name__ == "__main__":
-    qasm_file = "ghz_indep_qiskit_128.qasm" #TODO: replace this with your QASM file path
+    qasm_file = "ae_indep_qiskit_10.qasm" #TODO: replace this with your QASM file path
 
-    # 1. Circuit Representation 
+    # 1. Circuit Representation
     # returns the hdh object itself, qubit groups, and a list of dependencies.
     circuit_hdh, initial_qubit_groups, circuit_dependencies = create_circuit_representation_from_qasm(qasm_file)
     if circuit_hdh is None:
-        exit() 
+        exit()
 
-    # 2. Network Graph 
+    # 2. Network Graph
     num_devices = 4
-    
+
     # calculates total circuit operation nodes from hdh for capacity check
     total_logical_qubits = len(initial_qubit_groups)
-    per_chip_capacity = int(np.ceil(total_logical_qubits / num_devices)*1.2) # 20% extra capacity 
+    per_chip_capacity = int(np.ceil(total_logical_qubits / num_devices)*1.2) # 20% extra capacity
     capacities_per_chip = [per_chip_capacity] * num_devices
 
     if sum(capacities_per_chip) < total_logical_qubits:
@@ -287,24 +289,24 @@ if __name__ == "__main__":
 
     network_graph = create_linear_network_graph(num_devices, capacities_per_chip)
 
-    # 3. Precompute shortest paths for the network graph 
+    # 3. Precompute shortest paths for the network graph
     shortest_paths_matrix = precompute_all_pairs_shortest_paths(network_graph)
     # print("\nNetwork Shortest Paths:")
     # for s, paths in shortest_paths_matrix.items():
     #     for t, dist in paths.items():
             # print(f"  Dist({s}, {t}) = {dist}")
 
-    # 4. Initial Mapping 
+    # 4. Initial Mapping
     initial_mapping, network_node_loads = create_initial_mapping(circuit_hdh, network_graph, initial_qubit_groups)
 
-    # 5. Run Local Search 
+    # 5. Run Local Search
     final_mapping, final_cost, final_network_loads = run_local_search(
         circuit_hdh,
         network_graph,
         initial_mapping,
         network_node_loads,
         shortest_paths_matrix,
-        circuit_dependencies 
+        circuit_dependencies
     )
 
     # print(f"\n Final communication cost: {final_cost}")
@@ -332,12 +334,9 @@ if __name__ == "__main__":
         circuit_dependencies,
         shortest_paths_matrix
     )
-    
+
     print(f"\nOpposing partitioning result: {opposing}")
     if final_cost < opposing:
         print(f"Final cost ({final_cost}) is less than opposing partitioning cost ({opposing}).")
     else:
         print(f"Final cost ({final_cost}) is greater than or equal to opposing partitioning cost ({opposing}).")
-        
-        
-        
